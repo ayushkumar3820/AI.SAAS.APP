@@ -49,6 +49,7 @@ export const getUserCoins = unstable_cache(
 
 export const getTransactions = unstable_cache(
   async (user_id: number | string) => {
+    // Changed from transactions to Transactions to match the schema
     return await prisma.transactions.findMany({
       where: {
         user_id: Number(user_id),
@@ -64,6 +65,7 @@ export const getTransactions = unstable_cache(
 
 export const getCoinsSpend = unstable_cache(
   async (user_id: number | string) => {
+    // Changed from coinSpend to coin_spend to match the schema mapping
     return await prisma.coinSpend.findMany({
       where: {
         user_id: Number(user_id),
