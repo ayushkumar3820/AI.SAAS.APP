@@ -1,7 +1,6 @@
 "use server";
 import prisma from "@/lib/db.config";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { revalidateTag, unstable_cache } from "next/cache";
+import { revalidateTag} from "next/cache";
 
 export async function updateSummary(id: string, data: string): Promise<void> {
   await prisma.summary.update({
@@ -55,6 +54,9 @@ export async function coinsSpend(
   });
 }
 
-export const clearCache = (key: string) => {
+export const clearCache = async (key: string) => {
   revalidateTag(key);
 };
+
+
+

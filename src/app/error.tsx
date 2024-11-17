@@ -16,7 +16,7 @@ export default function Error({
 
   return (
     <div className="h-[90vh] flex justify-center items-center flex-col">
-      <Image src="/images/500.svg" width={500} height={500} alt="404" />
+      <Image src="/image/500.svg" width={500} height={500} alt="404" />
       <h2>Something went wrong!</h2>
       <Button
         onClick={

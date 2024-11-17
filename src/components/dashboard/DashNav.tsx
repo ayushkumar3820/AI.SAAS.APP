@@ -18,7 +18,7 @@ export default function DashNav({
     <nav className="w-full flex justify-between items-center h-12 p-2">
       <Link href="/">
         <div className="flex items-center space-x-2">
-          <Image src="/images/icon_192.png" width={40} height={40} alt="logo" />
+          <Image src="/image/icon_192.png" width={40} height={40} alt="logo" />
           <h1 className="text-2xl font-extrabold">PodBite</h1>
         </div>
       </Link>
