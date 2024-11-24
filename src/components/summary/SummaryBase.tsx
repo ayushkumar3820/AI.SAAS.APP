@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
 "use client";
 import React, { useEffect, useState } from "react";
@@ -11,14 +12,7 @@ export default function SummaryBase({ summary }: { summary: ChatType | null }) {
   const [loading, setLoading] = useState(true);
   const [response, setResponse] = useState("");
 
-  useEffect(() => {
-    if (summary?.response) {
-      setResponse(summary?.response!);
-      setLoading(false);
-    } else {
-      summarize();
-    }
-  }, [summary]);
+ 
 
   const summarize = async () => {
     try {
@@ -48,6 +42,14 @@ export default function SummaryBase({ summary }: { summary: ChatType | null }) {
       }
     }
   };
+  useEffect(() => {
+    if (summary?.response) {
+      setResponse(summary?.response!);
+      setLoading(false);
+    } else {
+      summarize();
+    }
+  }, [summarize, summary]);
 
   return (
     <div className="flex items-center flex-col w-full">
