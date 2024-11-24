@@ -7,24 +7,30 @@ import React from "react";
 export default async function CancelTxn({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | undefined };
+  searchParams: { txnId?: string };
 }) {
+  const txnId = searchParams["txnId"];
+  if (!txnId) {
+    return notFound(); // Handle missing txnId
+  }
+
   const transaction = await prisma.transactions.findUnique({
     where: {
       status: 2,
-      id: searchParams["txnId"],
+      id: txnId,
     },
   });
   console.log("The transaction is", transaction);
   if (!transaction) {
     return notFound();
   }
+
   await prisma.transactions.update({
     data: {
       status: 0,
     },
     where: {
-      id: searchParams["txnId"],
+      id: txnId,
     },
   });
   clearCache("transactions");
