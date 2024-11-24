@@ -4,11 +4,13 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import React from "react";
 
-export default async function CancelTxn({
-  searchParams,
-}: {
-  searchParams: { txnId?: string };
-}) {
+interface PageProps {
+  searchParams: {
+    txnId?: string;
+  };
+}
+
+export default async function CancelTxn({ searchParams }: PageProps) {
   const txnId = searchParams["txnId"];
   if (!txnId) {
     return notFound(); // Handle missing txnId
