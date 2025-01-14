@@ -1,16 +1,22 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { clearCache } from "@/actions/commonActions";
 import prisma from "@/lib/db.config";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import React from "react";
 
-interface PageProps {
+type Props = {
+  params: {};
   searchParams: {
     txnId?: string;
   };
 }
 
-export default async function CancelTxn({ searchParams }: PageProps) {
+export default async function CancelTxn({
+  params,
+  searchParams,
+}: Props) {
   const txnId = searchParams["txnId"];
   if (!txnId) {
     return notFound(); // Handle missing txnId
