@@ -4,91 +4,127 @@ import { getServerSession } from "next-auth";
 import prisma from "@/lib/db.config";
 import Stripe from "stripe";
 
-// Interface for the request payload
 interface SessionPayload {
   plan: string;
 }
 
 export async function POST(req: NextRequest) {
-  // Get the session to verify user authentication
   const session: CustomSession | null = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    // Parse the request body
     const body: SessionPayload = await req.json();
     
-    // Initialize Stripe with the secret key from environment variables
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: "2024-10-28.acacia", // Specify the API version
-    });
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("Stripe secret key is not configured");
+    }
 
-    // Log the Stripe key for debugging (ensure to remove this in production)
-    console.log("Stripe Key:", process.env.STRIPE_SECRET_KEY);
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      // apiVersion: "2023-10-16",
+    });
 
     // Get the product from the database
-    const product = await prisma.products.findUnique({
+    const product = await prisma.products.findFirst({
       where: {
-        name: body.plan,
-      },
+        name: body.plan
+      }
     });
 
-    // Check if the product exists
     if (!product) {
       return NextResponse.json(
-        { message: "No product found. Please check you passed the correct product." },
+        { message: "Product not found" },
         { status: 404 }
       );
     }
 
-    // Create a transaction record in the database
+    // Verify the price exists in Stripe
+    const price = await stripe.prices.retrieve(product.price_id);
+    
+    // Determine the correct mode based on the price type
+    const mode = price.type === 'recurring' ? 'subscription' : 'payment';
+
+    // Create a transaction record with the correct schema types
     const transaction = await prisma.transactions.create({
       data: {
-        user_id: Number(session.user.id!),
+        user: {
+          connect: {
+            id: Number(session.user.id)
+          }
+        },
         amount: product.amount,
-      },
+        status: 2, // Default status from your schema
+      }
     });
 
-    // Log the transaction for debugging
-    console.log("Transaction Created:", transaction);
-
-    // Create a Stripe Checkout session
-    const stripeSession = await stripe.checkout.sessions.create({
+    // Common session parameters
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ["card"],
-      currency: "INR",
+      currency: product.currency,
       billing_address_collection: "required",
       line_items: [
         {
-          price: product.price_id, // Ensure this is a valid price ID from Stripe
+          price: product.price_id,
           quantity: 1,
         },
       ],
-      mode: "payment",
-      success_url: `${req.nextUrl.origin}/payment/success?txnId=${transaction.id}`,
-      cancel_url: `${req.nextUrl.origin}/payment/cancel?txnId=${transaction.id}`,
+      mode: mode,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/success?txnId=${transaction.id}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/cancel?txnId=${transaction.id}`,
+      metadata: {
+        transactionId: transaction.id,
+        userId: session.user.id,
+        productName: product.name,
+        productId: product.id.toString()
+      },
+    };
+
+    // Add subscription-specific parameters if needed
+    if (mode === 'subscription') {
+      sessionParams.subscription_data = {
+        metadata: {
+          transactionId: transaction.id,
+          userId: session.user.id,
+        },
+      };
+    }
+
+    // Create the checkout session
+    const stripeSession = await stripe.checkout.sessions.create(sessionParams);
+
+    // Update transaction with Stripe session ID if needed
+    await prisma.transactions.update({
+      where: { id: transaction.id },
+      data: {
+        status: 1, // You might want to update status to "pending"
+      }
     });
 
-    // Return the session ID to the client
     return NextResponse.json({
       message: "Session generated successfully!",
       id: stripeSession.id,
+      url: stripeSession.url,
+      mode: mode,
     });
   } catch (error) {
     console.error("Error occurred while creating Stripe session:", error);
     
-    // Handle specific errors if needed
     if (error instanceof Stripe.errors.StripeError) {
+      const stripeError = error as Stripe.errors.StripeError;
       return NextResponse.json(
-        { message: "Stripe API error occurred.", error: error.message },
-        { status: 500 }
+        { 
+          message: "Payment service error", 
+          error: stripeError.message,
+          code: stripeError.code,
+          type: stripeError.type,
+        },
+        { status: stripeError.statusCode || 500 }
       );
     }
 
-    // General error response
     return NextResponse.json(
-      { message: "Something went wrong. Please try again!" },
+      { message: "Internal server error", error: (error as Error).message },
       { status: 500 }
     );
   }
