@@ -10,34 +10,65 @@ export default async function SuccessTxn({
 }: {
   searchParams: { [key: string]: string | undefined };
 }) {
-  const transaction = await prisma.transactions.findUnique({
-    where: {
-      status: 2,
-      id: searchParams["txnId"],
-    },
-  });
-  console.log("The transaction is", transaction);
-  if (!transaction) {
-    return notFound();
-  }
-  await prisma.transactions.update({
-    data: {
-      status: 1,
-    },
-    where: {
-      id: searchParams["txnId"],
-    },
-  });
-  await addCoins(transaction.user_id, getCoinsFromAmount(transaction.amount));
-  clearCache("userCoins");
-  clearCache("transactions");
+  try {
+    // Validate txnId
+    const txnId = searchParams["txnId"];
+    if (!txnId) {
+      console.error("Payment Success: txnId is missing in searchParams");
+      return notFound();
+    }
 
-  return (
-    <div className="h-screen flex justify-center items-center flex-col ">
-      <Image src="/image/check.png" width={512} height={512} alt="cancel" />
-      <h1 className="text-3xl font-bold text-green-400">
-        Payment Processed successfully!
-      </h1>
-    </div>
-  );
+    // Find the transaction with less restrictive status check
+    const transaction = await prisma.transactions.findFirst({
+      where: {
+        id: txnId,
+        status: {
+          in: [1, 2] // Allow both pending and processing status
+        }
+      },
+    });
+
+    if (!transaction) {
+      console.error(`Payment Success: Transaction not found for txnId: ${txnId}`);
+      return notFound();
+    }
+
+    // Prevent double processing
+    if (transaction.status === 1) {
+      console.log(`Payment Success: Transaction ${txnId} already processed`);
+      return (
+        <div className="text-center p-8">
+          <h1 className="text-2xl font-bold mb-4">Payment Already Processed</h1>
+          <Image src="/success-image.png" alt="Success" width={200} height={200} />
+        </div>
+      );
+    }
+
+    // Update transaction status within a transaction
+    await prisma.$transaction(async (tx) => {
+      await tx.transactions.update({
+        data: { status: 1 },
+        where: { id: txnId }
+      });
+
+      await addCoins(transaction.user_id, getCoinsFromAmount(transaction.amount));
+    });
+
+    // Clear caches after successful update
+    await Promise.all([
+      clearCache("userCoins"),
+      clearCache("transactions")
+    ]);
+
+    return (
+      <div className="text-center p-8">
+        <h1 className="text-2xl font-bold mb-4">Payment Processed Successfully!</h1>
+        <Image src="/success-image.png" alt="Success" width={200} height={200} />
+      </div>
+    );
+
+  } catch (error) {
+    console.error("Payment Success: Error processing payment:", error);
+    throw error; // Let Next.js error boundary handle it
+  }
 }

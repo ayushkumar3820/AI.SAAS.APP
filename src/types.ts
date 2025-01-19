@@ -28,4 +28,18 @@ type CoinsType = {
     user_id?: string;
   };
   
+  // types/payment.ts
+export enum TransactionStatus {
+  CANCELLED = 0,
+  PENDING = 1,
+  INITIAL = 2,
+  COMPLETED = 3,
+  FAILED = 4
+}
+
+export interface Transaction {
+  id: string;
+  status: TransactionStatus;
+  // Add other transaction fields as needed
+}
   

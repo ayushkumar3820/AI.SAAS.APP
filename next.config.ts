@@ -1,8 +1,11 @@
-import type { NextConfig } from "next";
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    remotePatterns: [],
+  },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+}
 
-const nextConfig: NextConfig = {
-  reactStrictMode:true
-  /* config options here */
-};
-
-export default nextConfig;
+module.exports = nextConfig;
